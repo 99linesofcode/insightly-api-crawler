@@ -1,0 +1,5 @@
+.git
+.env
+front/node_modules
+back/app/vendor
+data
