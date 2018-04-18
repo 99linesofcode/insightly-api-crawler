@@ -43,6 +43,20 @@ final class InsightlyAPI {
   public function getEmails(string $queryString = '', array $options = []): array {
     return $this->get('Emails' . $queryString . '&brief=true', $options);
   }
+
+  /**
+   * getFileAttachments
+   * 
+   * Returns a list of attachments belonging to a single email.
+   * We will use this to loop over and download any attachment
+   * that we are able to retrieve.
+   *
+   * @return array
+   */
+  public function getFileAttachments(string $id, array $options = []): array {
+    return $this->get('Emails/' . $id . '/FileAttachments', $options);
+  }
+
   /**
    * Create and send a HTTP GET request
    *

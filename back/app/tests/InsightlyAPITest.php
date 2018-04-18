@@ -54,6 +54,18 @@ class InsighlyAPITest extends TestCase {
   }
 
   /**
+   * InsightlyAPI->getFileAttachments();
+   */
+  public function test_getFileAttachments_returns_array_containing_json_objects() {
+    $body = file_get_contents(__DIR__ . '/mocks/insightly_api/getEmail-FileAttachments-response.json');
+
+    $api = $this->getAPI(200, $body);
+    $result = $api->getFileAttachments('7459520');
+
+    $this->assertEquals(json_decode($body), $result);
+  }
+
+  /**
    * Mock external API calls
    *
    * @param int   $status status code to be mocked
