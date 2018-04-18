@@ -21,6 +21,16 @@ final class InsightlyAPI {
   public function __construct(\GuzzleHttp\Client $client) {
     $this->client = $client;
   }
+
+  /**
+   * getEmail
+   *
+   * @return array
+   */
+  public function getEmail(string $id, array $options = []): \stdClass {
+    return $this->get('Emails/' . $id, $options);
+  }
+
   /**
    * getEmails
    *

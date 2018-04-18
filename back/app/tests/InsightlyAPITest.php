@@ -42,6 +42,18 @@ class InsighlyAPITest extends TestCase {
   }
 
   /**
+   * InsightlyAPI->getEmail();
+   */
+  public function test_getEmail_returns_json_object_containing_email_data() {
+    $body = file_get_contents(__DIR__ . '/mocks/insightly_api/getEmail-response.json');
+
+    $api = $this->getAPI(200, $body);
+    $result = $api->getEmail('7459520');
+
+    $this->assertEquals(json_decode($body), $result);
+  }
+
+  /**
    * Mock external API calls
    *
    * @param int   $status status code to be mocked
