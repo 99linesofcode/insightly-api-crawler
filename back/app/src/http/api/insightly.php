@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace Acme\Http;
+namespace Acme\Http\API;
 
 require_once '/var/www/html/app/vendor/autoload.php';
 
@@ -9,7 +9,7 @@ use \GuzzleHttp\Exception\RequestException;
 use \GuzzleHttp\Exception\ClientException;
 use \Psr\Http\Message\ResponseInterface;
 
-final class InsightlyAPI {
+final class insightly {
 
   /**
    * @var \GuzzleHttp\Client
@@ -17,7 +17,7 @@ final class InsightlyAPI {
   private $client;
 
   private $version = 'v2.2';
-
+  
   public function __construct(\GuzzleHttp\Client $client) {
     $this->client = $client;
   }
@@ -29,6 +29,11 @@ final class InsightlyAPI {
    */
   public function getEmail(string $id, array $options = []): \stdClass {
     return $this->get('Emails/' . $id, $options);
+  }
+
+  public function getTotalNumberOfEmails(): int {
+    $response = $this->client->get('/' . $this->version . '/Emails?brief=true&top=1&count_total=true');
+    return intval($response->getHeaderLine('x-total-count'));
   }
 
   /**
@@ -45,7 +50,7 @@ final class InsightlyAPI {
   }
 
   /**
-   * getFileAttachments
+   * getEmailFileAttachments
    * 
    * Returns a list of attachments belonging to a single email.
    * We will use this to loop over and download any attachment
@@ -53,7 +58,7 @@ final class InsightlyAPI {
    *
    * @return array
    */
-  public function getFileAttachments(string $id, array $options = []): array {
+  public function getEmailFileAttachments(string $id, array $options = []): array {
     return $this->get('Emails/' . $id . '/FileAttachments', $options);
   }
 
