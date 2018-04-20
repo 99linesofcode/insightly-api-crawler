@@ -14,7 +14,7 @@ class InsighlyAPITest extends TestCase {
    * InsightlyAPI->getEmails(); 
    */
   public function test_getEmails_returns_a_paginated_array_containing_json_objects() {
-    $body = file_get_contents(__DIR__ . '/mocks/insightly_api/getEmails-response.json');
+    $body = file_get_contents(__DIR__ . '/mocks/getEmails-response.json');
 
     $api = $this->getAPI(200, $body);
     $result = $api->getEmails();
@@ -23,7 +23,7 @@ class InsighlyAPITest extends TestCase {
     $this->assertCount(100, $result);
   }
   public function test_getEmails_response_can_be_limited_to_x_results() {
-    $body = file_get_contents(__DIR__ . '/mocks/insightly_api/getEmails-limited-response.json');
+    $body = file_get_contents(__DIR__ . '/mocks/getEmails-limited-response.json');
 
     $api = $this->getAPI(200, $body);
     $result = $api->getEmails('?top=5');
@@ -31,8 +31,8 @@ class InsighlyAPITest extends TestCase {
     $this->assertCount(5, $result);
   }
   public function test_getEmails_response_can_be_told_to_skip_x_results() {
-    $correctBody = file_get_contents(__DIR__ . '/mocks/insightly_api/getEmails-skipped-response.json');
-    $incorrectBody = file_get_contents(__DIR__ . '/mocks/insightly_api/getEmails-limited-response.json');
+    $correctBody = file_get_contents(__DIR__ . '/mocks/getEmails-skipped-response.json');
+    $incorrectBody = file_get_contents(__DIR__ . '/mocks/getEmails-limited-response.json');
 
     $api = $this->getAPI(200, $correctBody);
     $result = $api->getEmails('?skip=5&top=5');
@@ -45,7 +45,7 @@ class InsighlyAPITest extends TestCase {
    * InsightlyAPI->getEmail();
    */
   public function test_getEmail_returns_json_object_containing_email_data() {
-    $body = file_get_contents(__DIR__ . '/mocks/insightly_api/getEmail-response.json');
+    $body = file_get_contents(__DIR__ . '/mocks/getEmail-response.json');
 
     $api = $this->getAPI(200, $body);
     $result = $api->getEmail('7459520');
@@ -54,13 +54,13 @@ class InsighlyAPITest extends TestCase {
   }
 
   /**
-   * InsightlyAPI->getFileAttachments();
+   * InsightlyAPI->getEmailFileAttachments();
    */
-  public function test_getFileAttachments_returns_array_containing_json_objects() {
-    $body = file_get_contents(__DIR__ . '/mocks/insightly_api/getEmail-FileAttachments-response.json');
+  public function test_getEmailFileAttachments_returns_array_containing_json_objects() {
+    $body = file_get_contents(__DIR__ . '/mocks/getEmail-FileAttachments-response.json');
 
     $api = $this->getAPI(200, $body);
-    $result = $api->getFileAttachments('7459520');
+    $result = $api->getEmailFileAttachments('7459520');
 
     $this->assertEquals(json_decode($body), $result);
   }
