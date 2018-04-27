@@ -11,15 +11,21 @@ use \Psr\Http\Message\ResponseInterface;
 
 final class insightly {
 
+  const BATCH_SIZE = 100;
+  const VERSION = 'v2.2';
+
   /**
    * @var \GuzzleHttp\Client
    */
   private $client;
-
-  private $version = 'v2.2';
   
   public function __construct(\GuzzleHttp\Client $client) {
     $this->client = $client;
+  }
+
+  public function getTotalNumberOfEmails(): int {
+    $response = $this->client->get('/' . self::VERSION . '/Emails?brief=true&top=1&count_total=true');
+    return intval($response->getHeaderLine('x-total-count'));
   }
 
   /**
@@ -29,24 +35,6 @@ final class insightly {
    */
   public function getEmail(string $id, array $options = []): \stdClass {
     return $this->get('Emails/' . $id, $options);
-  }
-
-  public function getTotalNumberOfEmails(): int {
-    $response = $this->client->get('/' . $this->version . '/Emails?brief=true&top=1&count_total=true');
-    return intval($response->getHeaderLine('x-total-count'));
-  }
-
-  /**
-   * getEmails
-   *
-   * Returns a batched list of emails. We will use this to
-   * loop over and get specific emails as getEmails does not
-   * contain the full body text.
-   *
-   * @return array
-   */
-  public function getEmails(string $queryString = '', array $options = []): array {
-    return $this->get('Emails' . $queryString . '&brief=true', $options);
   }
 
   /**
@@ -61,6 +49,19 @@ final class insightly {
   public function getEmailFileAttachments(string $id, array $options = []): array {
     return $this->get('Emails/' . $id . '/FileAttachments', $options);
   }
+  
+  /**
+   * getEmails
+   *
+   * Returns a batched list of emails. We will use this to
+   * loop over and get specific emails as getEmails does not
+   * contain the full body text.
+   *
+   * @return array
+   */
+  public function getEmails(string $queryString = '', array $options = []): array {
+    return $this->get('Emails' . $queryString . '&brief=true', $options);
+  }
 
   /**
    * Create and send a HTTP GET request
@@ -70,11 +71,12 @@ final class insightly {
    *
    * @return ResponseInterface
    *
+   * @throws Exception
    * @throws ClientException
    * @throws RequestException
    */
   private function get(string $uri, array $options = []) {
-    $response = $this->client->get('/' . $this->version . '/' . $uri, $options);
+    $response = $this->client->get('/' . self::VERSION . '/' . $uri, $options);
 
     return json_decode($response->getBody()->getContents());
   }

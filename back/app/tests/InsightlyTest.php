@@ -6,12 +6,12 @@ use \GuzzleHttp\HandlerStack;
 use \GuzzleHttp\Client;
 use \GuzzleHttp\Psr7\Response;
 use \GuzzleHttp\Exception\ClientException;
-use \Acme\Http\InsightlyAPI;
+use \Acme\Http\Api\Insightly;
 
-class InsighlyAPITest extends TestCase {
+class InsightlyTest extends TestCase {
 
   /**
-   * InsightlyAPI->getEmails(); 
+   * Insightly->getEmails(); 
    */
   public function test_getEmails_returns_a_paginated_array_containing_json_objects() {
     $body = file_get_contents(__DIR__ . '/mocks/getEmails-response.json');
@@ -42,7 +42,7 @@ class InsighlyAPITest extends TestCase {
   }
 
   /**
-   * InsightlyAPI->getEmail();
+   * Insightly->getEmail();
    */
   public function test_getEmail_returns_json_object_containing_email_data() {
     $body = file_get_contents(__DIR__ . '/mocks/getEmail-response.json');
@@ -54,7 +54,7 @@ class InsighlyAPITest extends TestCase {
   }
 
   /**
-   * InsightlyAPI->getEmailFileAttachments();
+   * Insightly->getEmailFileAttachments();
    */
   public function test_getEmailFileAttachments_returns_array_containing_json_objects() {
     $body = file_get_contents(__DIR__ . '/mocks/getEmail-FileAttachments-response.json');
@@ -71,14 +71,14 @@ class InsighlyAPITest extends TestCase {
    * @param int   $status status code to be mocked
    * @param mixed $body   response body to be mocked
    *
-   * @return Acme\Http\InsightlyAPI
+   * @return Acme\Http\Api\Insightly
    */
   private function getAPI(int $status, $body = null) {
     $mock = new MockHandler([new Response($status, [], $body)]);
     $handler = HandlerStack::create($mock);
     $client = new Client(['handler' => $handler]);
 
-    return new InsightlyAPI($client);
+    return new Insightly($client);
   }
 
 }
