@@ -76,6 +76,25 @@ class Main {
     }
   }
 
+  public function getAttachmentFilesFromInsightly() {
+    $attachmentsOnDisk = $this->getAttachmentsOnDisk();
+    $emails = json_decode(file_get_contents($this->uploadDirectory . '/' . 'emails.json'));
+    $emailsWithAttachments = array_filter($emails, function($email) {
+      if(!empty($email->ATTACHMENTS)) { return $email; }
+    });
+
+    foreach($emailsWithAttachments as $email) {
+      foreach($email->ATTACHMENTS as $attachment) {
+        $file = $this->api->getAttachment($attachment->FILE_ID);
+
+        $this->writeToJsonFile(
+          '/attachments/' . $email->EMAIL_ID . '/' . $attachment->FILE_NAME,
+          $file
+        );
+      }
+    }
+  }
+
   private function setLocalEmailIdStore() {
     $this->localEmailIdStore = json_decode(
       file_get_contents($this->uploadDirectory . '/ids.json')
@@ -155,5 +174,4 @@ class Main {
 
     mkdir($directory, 0777, true);
   }
->>>>>>> 39051b3... fixup! Get individual emails
 }
