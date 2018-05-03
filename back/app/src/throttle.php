@@ -9,12 +9,12 @@ final class Throttle {
   /**
    * @var int
    */
-  private $rateLimit;
+  private $ratePerSecond;
 
 /**
  * @var int
  */
-  private $cycleDurationInSeconds;
+  private $numberOfSeconds;
 
   /**
    * @var int
@@ -36,9 +36,10 @@ final class Throttle {
    */
   private $store;
 
-  public function __construct(int $rateLimit = 5) {
-    $this->rateLimit = $rateLimit;
-    $this->cycleDurationInSeconds = 3;
+  public function __construct(int $ratePerSecond = 5, int $numberOfSeconds = 1) {
+    $this->ratePerSecond = $ratePerSecond;
+    $this->numberOfSeconds = $numberOfSeconds;
+
     $this->hitsThisCycle = 0;
     $this->currentDateString = date('Y-m-d');
     $this->storeFilepath = '/var/www/html/app/data.json';
@@ -51,16 +52,18 @@ final class Throttle {
     }
 
     if($this->isDailyLimitSurpassed()) {
-      throw new \Exception('Daily limit reached. Go back to sleep..');
+      throw new \Exception('[Throttle] Daily limit reached. Go back to sleep..');
     }
 
     if( ! isset($this->expirationTime)) {
      $this->setExpirationTime(); 
     }
 
-    if($this->rateLimitExceeded()) {
-      usleep($this->expirationTime - microtime(true));
-      $this->resetRateLimit();
+    if($this->ratePerSecondExceeded()) {
+      $sleepInMicroSeconds = round(($this->expirationTime - microtime(true)) * 1000000);
+
+      usleep(intval($sleepInMicroSeconds));
+      $this->resetratePerSecond();
     }
 
     $this->hit();
@@ -86,14 +89,14 @@ final class Throttle {
   }
 
   private function setExpirationTime() {
-    return $this->expirationTime = microtime(true) + $this->cycleDurationInSeconds;
+    $this->expirationTime = microtime(true) + $this->numberOfSeconds;
   }
 
-  private function rateLimitExceeded(): bool {
-    return $this->hitsThisCycle == $this->rateLimit && microtime(true) < $this->expirationTime;
+  private function ratePerSecondExceeded(): bool {
+    return $this->hitsThisCycle >= $this->ratePerSecond && microtime(true) < $this->expirationTime;
   }
 
-  private function resetRateLimit() {
+  private function resetratePerSecond() {
     $this->hitsThisCycle = 0;
     $this->setExpirationTime();
   }
