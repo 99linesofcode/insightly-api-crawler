@@ -61,6 +61,7 @@ final class Throttle {
 
     if($this->ratePerSecondExceeded()) {
       $sleepInMicroSeconds = round(($this->expirationTime - microtime(true)) * 1000000);
+      Logger::debug('[Throttle] Rate limit reached. Sleeping for ' . $sleepInMicroSeconds . ' microseconds..');
 
       usleep(intval($sleepInMicroSeconds));
       $this->resetratePerSecond();
@@ -80,6 +81,7 @@ final class Throttle {
   }
 
   private function resetStoreData() {
+    Logger::debug('[Throttle] New day, updating $this->store->date and resetting $this->store->requests');
     $this->store->date = $this->currentDateString;
     $this->store->requests = 0;
   }
