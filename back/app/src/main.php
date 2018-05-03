@@ -58,6 +58,24 @@ class Main {
       file_put_contents($this->uploadDirectory . '/' . 'ids.json', json_encode($this->localEmailIdStore));
     }
   }
+  
+  /**
+   * getIndividualEmailsFromInsightly
+   */
+  public function getIndividualEmailsFromInsightly() {
+    $emailsNotOnFile = array_diff($this->localEmailIdStore, []);
+
+    if( ! empty($emailsNotOnFile)) {
+      foreach($emailsNotOnFile as $emailId) {
+        $email = $this->api->getEmail($emailId);
+        $attachments = $this->api->getAttachments($emailId);
+        $email->ATTACHMENTS = $attachments;
+
+        $this->writeToJsonFile('/emails.json', $email);
+      }
+    }
+  }
+
   private function setLocalEmailIdStore() {
     $this->localEmailIdStore = json_decode(
       file_get_contents($this->uploadDirectory . '/ids.json')
@@ -89,4 +107,53 @@ class Main {
   private function extractEmailIdsFromResponse(array $emails): array {
     return array_map(function($email) { return $email->EMAIL_ID; }, $emails);
   }
+
+  private function getAttachmentsOnDisk(): array {
+    // slice off dot directories
+    $directories = array_slice(scandir($this->uploadDirectory . '/' . 'attachments'), 2);
+
+    return array_map('intval', $directories);
+  }
+
+  private function dd($mixed) {
+    return die(var_dump($mixed));
+  }
+
+  private function writeToJsonFile(string $path, $data) {
+    $pathinfo = pathinfo($path);
+    $directory = $this->uploadDirectory . '/' . $pathinfo['dirname'];
+    $filepath = $directory . '/' . $pathinfo['filename'] . '.' . $pathinfo['extension'];
+
+    $this->makeRecursiveDirectory($directory);
+
+    $handle = fopen($filepath, 'r+');
+
+    if( ! isset($handle)) {
+      $handle = fopen($filepath, 'w+');
+    }
+
+    if($handle) {
+      fseek($handle, 0, SEEK_END);
+
+      if(ftell($handle) > 0) {
+        fseek($handle, -1, SEEK_END);
+        fwrite($handle, ',', 1);
+        fwrite($handle, json_encode($data) . ']');
+      }
+      else {
+        fwrite($handle, json_encode([$data]));
+      }
+
+      fclose($handle);
+    }
+  }
+
+  private function makeRecursiveDirectory(string $directory) {
+    if(is_dir($directory)) {
+      return;
+    }
+
+    mkdir($directory, 0777, true);
+  }
+>>>>>>> 39051b3... fixup! Get individual emails
 }
