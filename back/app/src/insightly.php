@@ -2,10 +2,9 @@
 
 namespace Acme;
 
-require_once '/var/www/html/app/vendor/autoload.php';
-
 use \GuzzleHttp\Client;
 use Acme\Throttle;
+use Acme\Logger;
 use \Psr\Http\Message\ResponseInterface;
 
 final class insightly {
@@ -27,14 +26,18 @@ final class insightly {
     $this->throttle = $throttle;
   }
 
-  public function getEmailsOnInsightlyCount() {
+  public function getEmailsOnInsightlyCount() { 
     return $this->throttle->attempt(function() {
       $response = $this->httpClient->get(self::VERSION_PREFIX . 'Emails?count_total=true&brief=true&top=1');
-      return intval($response->getHeaderLine('x-total-count'));
+      $totalCount = intval($response->getHeaderLine('x-total-count'));
+      Logger::debug('[Insightly] There are ' . $totalCount . ' emails stored on this account on Insightly');
+      return $totalCount;
     });
   }
 
   public function getEmails(int $skip) {
+    Logger::debug('[Insightly] Hit https://api.insight.ly/Emails?skip=' . $skip);
+
     return $this->throttle->attempt(function() use ($skip) {
       $response = $this->httpClient->get(self::VERSION_PREFIX . 'Emails?skip=' . $skip);
       return json_decode($response->getBody()->getContents());
@@ -42,6 +45,8 @@ final class insightly {
   }
 
   public function getEmail(int $emailId) {
+    Logger::debug('[Insightly] Hit https://api.insight.ly/Emails/' . $emailId);
+
     return $this->throttle->attempt(function() use ($emailId) {
       $response = $this->httpClient->get(self::VERSION_PREFIX . 'Emails/' . $emailId);
       return json_decode($response->getBody()->getContents());
@@ -49,16 +54,20 @@ final class insightly {
   }
 
   public function getAttachments(int $emailId) {
+    Logger::debug('[Insightly] Hit https://api.insight.ly/Emails/' . $emailId . '/FileAttachments');
+
     return $this->throttle->attempt(function() use ($emailId) {
       $response = $this->httpClient->get(self::VERSION_PREFIX . 'Emails/' . $emailId . '/FileAttachments');
       return json_decode($response->getBody()->getContents());
     });
   }
-  
-  public function getAttachment(int $fileId) {
-    return $this->throttle->attempt(function() use ($fileId) {
-      $response = $this->httpClient->get(self::VERSION_PREFIX . 'FileAttachments/' . $fileId);
-      return json_decode($response->getBody()->getContents());
+
+  public function getAttachment(int $fileId, string $filepath) {
+    Logger::debug('[Insightly] Hit https://api.insight.ly/FileAttachments/' . $fileId);
+
+    return $this->throttle->attempt(function() use ($fileId, $filepath) {
+      $response = $this->httpClient->get(self::VERSION_PREFIX . 'FileAttachments/' . $fileId, ['sink' => $filepath]);
+      Logger::debug('[Insightly] attachment sinked to ' . $filepath);
     });
   }
 }
