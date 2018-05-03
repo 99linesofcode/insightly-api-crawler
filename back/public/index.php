@@ -2,9 +2,9 @@
 
 require_once '/var/www/html/app/vendor/autoload.php';
 
-use Acme\Http\Api\Insightly;
-use \GuzzleHttp\Client;
-use Acme\Commands;
+use Acme\Main;
 
-$commands = new Commands();
-$commands->test();
+$main = new Main();
+#$main->getRemainingEmailIdsFromInsightly();
+#$main->getIndividualEmailsFromInsightly();
+$main->getAttachmentFilesFromInsightly();
