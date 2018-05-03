@@ -40,4 +40,25 @@ final class insightly {
       return json_decode($response->getBody()->getContents());
     });
   }
+
+  public function getEmail(int $emailId) {
+    return $this->throttle->attempt(function() use ($emailId) {
+      $response = $this->httpClient->get(self::VERSION_PREFIX . 'Emails/' . $emailId);
+      return json_decode($response->getBody()->getContents());
+    });
+  }
+
+  public function getAttachments(int $emailId) {
+    return $this->throttle->attempt(function() use ($emailId) {
+      $response = $this->httpClient->get(self::VERSION_PREFIX . 'Emails/' . $emailId . '/FileAttachments');
+      return json_decode($response->getBody()->getContents());
+    });
+  }
+  
+  public function getAttachment(int $fileId) {
+    return $this->throttle->attempt(function() use ($fileId) {
+      $response = $this->httpClient->get(self::VERSION_PREFIX . 'FileAttachments/' . $fileId);
+      return json_decode($response->getBody()->getContents());
+    });
+  }
 }
