@@ -28,7 +28,7 @@ class Main {
   public function __construct() {
     $guzzle = new Client([
       'base_uri' => 'https://api.insight.ly',
-      'timeout' => 2.0,
+      'timeout' => 30.0,
       'auth' => ['5dd256cf-b006-49f9-b8f2-4dbc8342c9b0', null, 'basic']
     ]);
     $throttle = new Throttle();
