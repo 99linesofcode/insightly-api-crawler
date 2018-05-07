@@ -2,6 +2,8 @@
 
 namespace Acme;
 
+use Acme\Logger;
+
 final class Throttle {
 
   const DAILY_LIMIT = 20000;
@@ -36,13 +38,24 @@ final class Throttle {
    */
   private $store;
 
+  /**
+   * @var int
+   */
+  private $startTime;
+
+  /**
+   * @var int
+   */
+  private $expirationTime;
+
   public function __construct(int $ratePerSecond = 5, int $numberOfSeconds = 1) {
     $this->ratePerSecond = $ratePerSecond;
     $this->numberOfSeconds = $numberOfSeconds;
 
     $this->hitsThisCycle = 0;
+    $this->startDateString = '2018-04-20';
     $this->currentDateString = date('Y-m-d');
-    $this->storeFilepath = '/var/www/html/app/data.json';
+    $this->storeFilepath = realpath(__DIR__ . '/..') . '/data.json';
     $this->store = json_decode(file_get_contents($this->storeFilepath));
   }
 
@@ -55,16 +68,16 @@ final class Throttle {
       throw new \Exception('[Throttle] Daily limit reached. Go back to sleep..');
     }
 
-    if( ! isset($this->expirationTime)) {
-     $this->setExpirationTime(); 
-    }
+    $this->setTimers();
 
-    if($this->ratePerSecondExceeded()) {
-      $sleepInMicroSeconds = round(($this->expirationTime - microtime(true)) * 1000000);
-      Logger::debug('[Throttle] Rate limit reached. Sleeping for ' . $sleepInMicroSeconds . ' microseconds..');
+    if($this->isRatePerSecondExceeded()) {
+      $this->hitsThisCycle = 0;
 
-      usleep(intval($sleepInMicroSeconds));
-      $this->resetratePerSecond();
+      $secondsPassed = microtime(true) - $this->startTime;
+      $sleepInSeconds = $this->expirationTime - microtime(true);
+      Logger::debug('[Throttle] Rate limit reached. ' . $secondsPassed. ' seconds passed. Sleeping for ' . $sleepInSeconds . ' seconds, so as to wait until ' . ($secondsPassed + $sleepInSeconds) . ' second passed');
+
+      usleep(intval(round($sleepInSeconds * 1000000)));
     }
 
     $this->hit();
@@ -73,15 +86,15 @@ final class Throttle {
   }
 
   private function isNewDay(): bool {
-    return $this->numberOfDaysPassed() > $this->store->date;
+    return $this->numberOfDaysPassed($this->currentDateString) > $this->numberOfDaysPAssed($this->store->date);
   }
 
-  private function numberOfDaysPassed() {
-    return (new \DateTime())->diff(new \DateTime($this->currentDateString))->format('%a');
+  private function numberOfDaysPassed(string $date) {
+    return (new \DateTime($date))->diff(new \DateTime($this->startDateString))->format('%a');
   }
 
   private function resetStoreData() {
-    Logger::debug('[Throttle] New day, updating $this->store->date and resetting $this->store->requests');
+    Logger::debug('[Throttle] New day, updating $this->store->date to ' . $this->currentDateString . ' and resetting $this->store->requests to 0');
     $this->store->date = $this->currentDateString;
     $this->store->requests = 0;
   }
@@ -90,17 +103,17 @@ final class Throttle {
     return $this->store->requests >= self::DAILY_LIMIT;
   }
 
-  private function setExpirationTime() {
-    $this->expirationTime = microtime(true) + $this->numberOfSeconds;
+  private function setTimers() {
+    if($this->expirationTime == null || microtime(true) >= $this->expirationTime) {
+      $this->startTime = microtime(true);
+      $this->expirationTime = $this->startTime + $this->numberOfSeconds;
+
+      Logger::debug('[Throttle] startTime set to ' . $this->startTime . ' and expirationTime set to ' . $this->expirationTime);
+    }
   }
 
-  private function ratePerSecondExceeded(): bool {
-    return $this->hitsThisCycle >= $this->ratePerSecond && microtime(true) < $this->expirationTime;
-  }
-
-  private function resetratePerSecond() {
-    $this->hitsThisCycle = 0;
-    $this->setExpirationTime();
+  private function isRatePerSecondExceeded(): bool {
+    return $this->hitsThisCycle == $this->ratePerSecond && microtime(true) < $this->expirationTime;
   }
 
   private function hit() {
