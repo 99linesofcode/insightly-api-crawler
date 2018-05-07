@@ -1,2 +1,4 @@
+/back/app/uploads/attachments/*
+/back/app/uploads/emails/*
 /data
 .env
