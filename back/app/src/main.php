@@ -5,6 +5,7 @@ namespace Acme;
 use \FileSystemIterator;
 use \GuzzleHttp\Client;
 use Acme\Throttle;
+use Acme\Logger;
 
 class Main {
 
@@ -25,18 +26,21 @@ class Main {
    */
   private $numberOfEmailsOnInsightly;
 
-  public function __construct() {
+  public function __construct(string $uploadDirectory) {
     $guzzle = new Client([
       'base_uri' => 'https://api.insight.ly',
       'timeout' => 30.0,
       'auth' => ['5dd256cf-b006-49f9-b8f2-4dbc8342c9b0', null, 'basic']
     ]);
     $throttle = new Throttle();
-
     $this->api = new Insightly($guzzle, $throttle);
-    $this->uploadDirectory = realpath('/var/www/html/app/uploads');
 
-    $this->setLocalEmailIdStore();
+    file_put_contents(realpath(__DIR__ . '/..') . '/log.txt', '');
+    Logger::debug('[Main] Initialised. Ready to execute commands');
+
+    $this->uploadDirectory = $uploadDirectory;
+
+    $this->localEmailIdStore = json_decode(file_get_contents($this->uploadDirectory . '/ids.json'));
     $this->setnumberOfEmailsOnInsightly();
   }
 
@@ -45,60 +49,83 @@ class Main {
    */
   public function getRemainingEmailIdsFromInsightly() {
     $listOfEmailIds = [];
+    $filepath = $this->uploadDirectory . '/ids.json';
 
     if($this->isEmailIdsRemaining()) {
-      for($i = 0; $i < $this->getNumberOfIterations(); ++$i) {
+      $iterations = $this->getNumberOfIterations();
+
+      for($i = 1; $i <= $iterations; ++$i) {
         $skip = count($this->localEmailIdStore) + count($listOfEmailIds);
         $emails = $this->api->getEmails($skip);
         $emailIds = $this->extractEmailIdsFromResponse($emails);
         $listOfEmailIds = array_merge($listOfEmailIds, $emailIds);
       }
 
+      Logger::debug('[Main] wrote ' . count($listOfEmailIds) . ' emails to $listOfEmailIds. Saving to disk => ' . $filepath);
+
       $this->localEmailIdStore = array_merge($this->localEmailIdStore, $listOfEmailIds);
-      file_put_contents($this->uploadDirectory . '/' . 'ids.json', json_encode($this->localEmailIdStore));
+      file_put_contents($filepath, json_encode($this->localEmailIdStore));
     }
   }
-  
+
   /**
    * getIndividualEmailsFromInsightly
    */
   public function getIndividualEmailsFromInsightly() {
-    $emailsNotOnFile = array_diff($this->localEmailIdStore, []);
+    $filepath = $this->uploadDirectory . '/emails';
+    $emailsOnFile = array_slice(scandir($filepath), 2);
+    $emailsNotOnFile = array_diff($this->localEmailIdStore, $emailsOnFile);
 
     if( ! empty($emailsNotOnFile)) {
+      Logger::debug('[Main] retrieving ' . count($emailsNotOnFile) . ' emails that are not saved to disk');
+
       foreach($emailsNotOnFile as $emailId) {
         $email = $this->api->getEmail($emailId);
-        $attachments = $this->api->getAttachments($emailId);
-        $email->ATTACHMENTS = $attachments;
+        if(isset($email)) {
+          $attachments = $this->api->getAttachments($emailId);
+          $email->ATTACHMENTS = $attachments;
+          $email->ATTACHMENTS_RETRIEVED = false;
 
-        $this->writeToJsonFile('/emails.json', $email);
+          $outputFile = $filepath . '/' . $emailId . '.json';
+          $this->writeToFile($outputFile, $email);
+          Logger::debug('[Main] wrote complete email data object with id ' . $emailId . ' to ' . $outputFile);
+        }
       }
     }
   }
 
   public function getAttachmentFilesFromInsightly() {
-    $attachmentsOnDisk = $this->getAttachmentsOnDisk();
-    $emails = json_decode(file_get_contents($this->uploadDirectory . '/' . 'emails.json'));
-    $emailsWithAttachments = array_filter($emails, function($email) {
-      if(!empty($email->ATTACHMENTS)) { return $email; }
-    });
+    $emailDirectory = $this->uploadDirectory . '/emails';
+    $emailsOnFile = array_slice(scandir($emailDirectory), 2);
+    $emailsWithAttachments = [];
 
-    foreach($emailsWithAttachments as $email) {
-      foreach($email->ATTACHMENTS as $attachment) {
-        $file = $this->api->getAttachment($attachment->FILE_ID);
-
-        $this->writeToJsonFile(
-          '/attachments/' . $email->EMAIL_ID . '/' . $attachment->FILE_NAME,
-          $file
-        );
+    if( ! empty($emailsOnFile)) {
+      foreach($emailsOnFile as $filename) {
+        $email = json_decode(file_get_contents($emailDirectory . '/' . $filename));
+        if($email->ATTACHMENTS_RETRIEVED == false && ! empty($email->ATTACHMENTS)) {
+          $emailsWithAttachments[] = $email;
+        }
       }
     }
-  }
 
-  private function setLocalEmailIdStore() {
-    $this->localEmailIdStore = json_decode(
-      file_get_contents($this->uploadDirectory . '/ids.json')
-    );
+    if( ! empty($emailsWithAttachments)) {
+      $attachmentDirectory = $this->uploadDirectory . '/attachments/';
+
+      foreach($emailsWithAttachments as $email) {
+        $emailId = $email->EMAIL_ID;
+
+        foreach($email->ATTACHMENTS as $attachment) {
+          $filepath = $attachmentDirectory . $emailId . '/' . $attachment->FILE_NAME;
+          $this->makeRecursiveDirectory(dirname($filepath));
+          $this->api->getAttachment($attachment->FILE_ID, $filepath);
+        }
+
+        $outputFile - $emailDirectory . '/' . $emailId . '.json';
+        $email->ATTACHMENTS_RETRIEVED = true;
+        $this->writeToFile($outputFile, $email);
+        Logger::debug('[Main] ATTACHMENTS_RETRIEVED set to True and wrote to ' . $outputFile);
+      }
+    }
   }
 
   private function setnumberOfEmailsOnInsightly() {
@@ -107,10 +134,16 @@ class Main {
     }
 
     $this->numberOfEmailsOnInsightly = $this->api->getEmailsOnInsightlyCount() - count($this->localEmailIdStore);
-  } 
+  }
 
   private function isEmailIdsRemaining(): bool {
-    return boolval($this->numberOfEmailsOnInsightly);
+    $isEmailsRemaining = boolval($this->numberOfEmailsOnInsightly);
+
+    if($isEmailsRemaining) {
+      Logger::debug('[Main ] ' . $this->numberOfEmailsOnInsightly . ' emails left to retrieve from Insightly');
+    }
+
+    return $isEmailsRemaining;
   }
 
   private function getNumberOfIterations(): int {
@@ -120,6 +153,8 @@ class Main {
       $numberOfBatches = 1;
     }
 
+    Logger::debug('[Main] retrieving ' . $this->numberOfEmailsOnInsightly . ' emails in ' . floor($numberOfBatches) . ' iterations of ' . self::BATCH_SIZE);
+
     return intval(ceil($numberOfBatches));
   }
 
@@ -127,42 +162,12 @@ class Main {
     return array_map(function($email) { return $email->EMAIL_ID; }, $emails);
   }
 
-  private function getAttachmentsOnDisk(): array {
-    // slice off dot directories
-    $directories = array_slice(scandir($this->uploadDirectory . '/' . 'attachments'), 2);
+  private function writeToFile(string $path, $data) {
+    $this->makeRecursiveDirectory(dirname($path));
 
-    return array_map('intval', $directories);
-  }
-
-  private function dd($mixed) {
-    return die(var_dump($mixed));
-  }
-
-  private function writeToJsonFile(string $path, $data) {
-    $pathinfo = pathinfo($path);
-    $directory = $this->uploadDirectory . '/' . $pathinfo['dirname'];
-    $filepath = $directory . '/' . $pathinfo['filename'] . '.' . $pathinfo['extension'];
-
-    $this->makeRecursiveDirectory($directory);
-
-    $handle = fopen($filepath, 'r+');
-
-    if( ! isset($handle)) {
-      $handle = fopen($filepath, 'w+');
-    }
-
+    $handle = fopen($path, 'w');
     if($handle) {
-      fseek($handle, 0, SEEK_END);
-
-      if(ftell($handle) > 0) {
-        fseek($handle, -1, SEEK_END);
-        fwrite($handle, ',', 1);
-        fwrite($handle, json_encode($data) . ']');
-      }
-      else {
-        fwrite($handle, json_encode([$data]));
-      }
-
+      fwrite($handle, json_encode($data));
       fclose($handle);
     }
   }
