@@ -1,6 +1,6 @@
 <?php
 
-$autoloadPath = '/var/www/html/app/vendor/autoload.php';
+$autoloadPath = '../app/vendor/autoload.php';
 $uploadDirectory = realpath('/var/www/html/app/uploads');
 
 use Acme\Main;
