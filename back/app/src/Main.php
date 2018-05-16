@@ -73,8 +73,8 @@ class Main {
    */
   public function getIndividualEmailsFromInsightly() {
     $filepath = $this->uploadDirectory . '/emails';
-    $emailsOnFile = array_slice(scandir($filepath), 2);
-    $emailsNotOnFile = array_diff($this->localEmailIdStore, $emailsOnFile);
+    $emailIdsOnFile = $this->getEmailIdsOnFile();
+    $emailsNotOnFile = array_diff($this->localEmailIdStore, $emailIdsOnFile);
 
     if( ! empty($emailsNotOnFile)) {
       Logger::debug('[Main] retrieving ' . count($emailsNotOnFile) . ' emails that are not saved to disk');
@@ -96,7 +96,7 @@ class Main {
 
   public function getAttachmentFilesFromInsightly() {
     $emailDirectory = $this->uploadDirectory . '/emails';
-    $emailsOnFile = array_slice(scandir($emailDirectory), 2);
+    $emailIdsOnFile = $this->getEmailIdsOnFile();
     $emailsWithAttachments = [];
 
     if( ! empty($emailsOnFile)) {
@@ -126,6 +126,19 @@ class Main {
         Logger::debug('[Main] ATTACHMENTS_RETRIEVED set to True and wrote to ' . $outputFile);
       }
     }
+  }
+
+  private function getEmailIdsOnFile() {
+    // slices off dotfiles and .gitignore
+    $emailFilenames = array_slice(scandir($this->emailDirectory), 3);
+
+    if(empty($emailFilenames)) {
+      return $emailFilenames;
+    }
+
+    return array_map(function($filename) {
+      return intval(strstr($filename, '.', True));
+    }, $emailFilenames);
   }
 
   private function setnumberOfEmailsOnInsightly() {
