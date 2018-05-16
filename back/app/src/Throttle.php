@@ -3,6 +3,7 @@
 namespace Acme;
 
 use Acme\Logger;
+use \GuzzleHttp\Exception\TransferException;
 
 final class Throttle {
 
@@ -82,7 +83,13 @@ final class Throttle {
 
     $this->hit();
 
-    return $closure();
+    try {
+      return $closure();
+    }
+    catch (TransferException $e) {
+      Logger::debug('[Insightly] Warning, A Guzzle TransferException occurred. Rethrown to be handled by Insighty.php');
+      throw $e;
+    }
   }
 
   private function isNewDay(): bool {

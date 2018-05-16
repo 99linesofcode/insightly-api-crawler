@@ -3,6 +3,7 @@
 namespace Acme;
 
 use \GuzzleHttp\Client;
+use \GuzzleHttp\Exception\TransferException;
 use Acme\Throttle;
 use Acme\Logger;
 use \Psr\Http\Message\ResponseInterface;
@@ -47,19 +48,24 @@ final class insightly {
   public function getEmail(int $emailId) {
     Logger::debug('[Insightly] Hit https://api.insight.ly/Emails/' . $emailId);
 
-    return $this->throttle->attempt(function() use ($emailId) {
-      $response = $this->httpClient->get(self::VERSION_PREFIX . 'Emails/' . $emailId);
+    try {
+      return $this->throttle->attempt(function() use ($emailId) {
+        $response = $this->httpClient->get(self::VERSION_PREFIX . 'Emails/' . $emailId);
 
-      if($response->getStatusCode() == 500) {
-        Logger::debug('[Insightly] Warning: Got a faulty error response for email with id ' . $emailId . '. Simply storing the ID');
+        return json_decode($response->getBody()->getContents());
+      });
+    }
+    catch (TransferException $e) {
+      if($e->getCode() == 500) {
+        Logger::debug('[Insightly] Warning, HTTP status 500 returned. Gracefully handled it by creating an empty email object for id ' . $emailId);
         $email = new \stdClass();
         $email->EMAIL_ID = $emailId;
 
         return $email;
       }
 
-      return json_decode($response->getBody()->getContents());
-    });
+      throw $e;
+    }
   }
 
   public function getAttachments(int $emailId) {
