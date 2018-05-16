@@ -64,7 +64,7 @@ class Main {
     $filepath = $this->uploadDirectory . '/ids.json';
 
     if( ! $this->isEmailIdsRemaining()) {
-      Logger::debug('[Main] All email ids are already saved to disk. Skipping getRemainingEmailIdsFromInsightly()');
+      Logger::debug('[Main] All email ids are already saved to disk. Skipping getRemainingEmailIdsFromInsightly');
       return;
     }
 
@@ -110,33 +110,41 @@ class Main {
   }
 
   public function getAttachmentFilesFromInsightly() {
+    $emailsWithUnretrievedAttachments = $this->getEmailsWithUnretrievedAttachments();
+
+    if(empty($emailsWithUnretrievedAttachments)) {
+      Logger::debug('[Main] all attachments belonging to emails on file are already saved to disk. Skipping getAttachmentFilesFromInsightly');
+    }
+
+    foreach($emailsWithUnretrievedAttachments as $email) {
+      $emailId = $email->EMAIL_ID;
+
+      foreach($email->ATTACHMENTS as $attachment) {
+        $filepath = $this->attachmentDirectory . '/' . $emailId . '/' . $attachment->FILE_NAME;
+        $this->api->getAttachment($attachment->FILE_ID, $filepath);
+      }
+
+      $outputFile = $this->emailDirectory . '/' . $emailId . '.json';
+      $email->ATTACHMENTS_RETRIEVED = true;
+      $this->writeToFile($outputFile, $email);
+      Logger::debug('[Main] ATTACHMENTS_RETRIEVED set to True and wrote to ' . $outputFile);
+    }
+  }
+
+  private function getEmailsWithUnretrievedAttachments(): array {
     $emailIdsOnFile = $this->getEmailIdsOnFile();
-    $emailsWithAttachments = [];
+    $emailsWithUnretrievedAttachments = [];
 
     if( ! empty($emailIdsOnFile)) {
       foreach($emailIdsOnFile as $id) {
         $email = json_decode(file_get_contents($this->emailDirectory . '/' . $id . '.json'));
         if($email->ATTACHMENTS_RETRIEVED == false && ! empty($email->ATTACHMENTS)) {
-          $emailsWithAttachments[] = $email;
+          $emailsWithUnretrievedAttachments[] = $email;
         }
       }
     }
 
-    if( ! empty($emailsWithAttachments)) {
-      foreach($emailsWithAttachments as $email) {
-        $emailId = $email->EMAIL_ID;
-
-        foreach($email->ATTACHMENTS as $attachment) {
-          $filepath = $this->attachmentDirectory . '/' . $emailId . '/' . $attachment->FILE_NAME;
-          $this->api->getAttachment($attachment->FILE_ID, $filepath);
-        }
-
-        $outputFile = $this->emailDirectory . '/' . $emailId . '.json';
-        $email->ATTACHMENTS_RETRIEVED = true;
-        $this->writeToFile($outputFile, $email);
-        Logger::debug('[Main] ATTACHMENTS_RETRIEVED set to True and wrote to ' . $outputFile);
-      }
-    }
+    return $emailsWithUnretrievedAttachments;
   }
 
   private function getEmailIdsOnFile() {
