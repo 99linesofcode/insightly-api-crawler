@@ -109,6 +109,9 @@ class Main {
     }
   }
 
+  /**
+   * getAttachmentFilesFromInsightly
+   */
   public function getAttachmentFilesFromInsightly() {
     $emailsWithUnretrievedAttachments = $this->getEmailsWithUnretrievedAttachments();
 
@@ -118,10 +121,12 @@ class Main {
 
     foreach($emailsWithUnretrievedAttachments as $email) {
       $emailId = $email->EMAIL_ID;
+      $attachmentsFolder = $this->attachmentDirectory . '/' . $emailId;
+      $this->makeRecursiveDirectory($attachmentsFolder);
 
       foreach($email->ATTACHMENTS as $attachment) {
-        $filepath = $this->attachmentDirectory . '/' . $emailId . '/' . $attachment->FILE_NAME;
-        $this->api->getAttachment($attachment->FILE_ID, $filepath);
+        $outputFile = $attachmentsFolder . '/' . $attachment->FILE_ID;
+        $this->api->getAttachment($attachment->FILE_ID, $outputFile);
       }
 
       $outputFile = $this->emailDirectory . '/' . $emailId . '.json';
