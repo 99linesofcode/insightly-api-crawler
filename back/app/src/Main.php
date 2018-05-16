@@ -57,7 +57,7 @@ class Main {
       for($i = 1; $i <= $iterations; ++$i) {
         $skip = count($this->localEmailIdStore) + count($listOfEmailIds);
         $emails = $this->api->getEmails($skip);
-        $emailIds = $this->extractEmailIdsFromResponse($emails);
+        $emailIds = array_column($emails, 'EMAIL_ID');
         $listOfEmailIds = array_merge($listOfEmailIds, $emailIds);
       }
 
@@ -156,10 +156,6 @@ class Main {
     Logger::debug('[Main] retrieving ' . $this->numberOfEmailsOnInsightly . ' emails in ' . floor($numberOfBatches) . ' iterations of ' . self::BATCH_SIZE);
 
     return intval(ceil($numberOfBatches));
-  }
-
-  private function extractEmailIdsFromResponse(array $emails): array {
-    return array_map(function($email) { return $email->EMAIL_ID; }, $emails);
   }
 
   private function writeToFile(string $path, $data) {
