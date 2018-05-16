@@ -63,21 +63,24 @@ class Main {
     $listOfEmailIds = [];
     $filepath = $this->uploadDirectory . '/ids.json';
 
-    if($this->isEmailIdsRemaining()) {
-      $iterations = $this->getNumberOfIterations();
-
-      for($i = 1; $i <= $iterations; ++$i) {
-        $skip = count($this->localEmailIdStore) + count($listOfEmailIds);
-        $emails = $this->api->getEmails($skip);
-        $emailIds = array_column($emails, 'EMAIL_ID');
-        $listOfEmailIds = array_merge($listOfEmailIds, $emailIds);
-      }
-
-      Logger::debug('[Main] wrote ' . count($listOfEmailIds) . ' emails to $listOfEmailIds. Saving to disk => ' . $filepath);
-
-      $this->localEmailIdStore = array_merge($this->localEmailIdStore, $listOfEmailIds);
-      file_put_contents($filepath, json_encode($this->localEmailIdStore));
+    if( ! $this->isEmailIdsRemaining()) {
+      Logger::debug('[Main] All email ids are already saved to disk. Skipping getRemainingEmailIdsFromInsightly()');
+      return;
     }
+
+    $iterations = $this->getNumberOfIterations();
+
+    for($i = 1; $i <= $iterations; ++$i) {
+      $skip = count($this->localEmailIdStore) + count($listOfEmailIds);
+      $emails = $this->api->getEmails($skip);
+      $emailIds = array_column($emails, 'EMAIL_ID');
+      $listOfEmailIds = array_merge($listOfEmailIds, $emailIds);
+    }
+
+    Logger::debug('[Main] wrote ' . count($listOfEmailIds) . ' emails to $listOfEmailIds. Saving to disk => ' . $filepath);
+
+    $this->localEmailIdStore = array_merge($this->localEmailIdStore, $listOfEmailIds);
+    file_put_contents($filepath, json_encode($this->localEmailIdStore));
   }
 
   /**
