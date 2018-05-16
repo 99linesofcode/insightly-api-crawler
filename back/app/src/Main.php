@@ -17,6 +17,16 @@ class Main {
   private $uploadDirectory;
 
   /**
+   * @var string
+   */
+  private $emailDirectory;
+
+  /**
+   * @var string
+   */
+  private $attachmentDirectory;
+  
+  /**
    * @var array
    */
   private $emailIdsOnDisk;
@@ -39,6 +49,8 @@ class Main {
     Logger::debug('[Main] Initialised. Ready to execute commands');
 
     $this->uploadDirectory = $uploadDirectory;
+    $this->emailDirectory = $uploadDirectory . '/emails';
+    $this->attachmentDirectory = $uploadDirectory . '/attachments';
 
     $this->localEmailIdStore = json_decode(file_get_contents($this->uploadDirectory . '/ids.json'));
     $this->setnumberOfEmailsOnInsightly();
@@ -72,7 +84,6 @@ class Main {
    * getIndividualEmailsFromInsightly
    */
   public function getIndividualEmailsFromInsightly() {
-    $filepath = $this->uploadDirectory . '/emails';
     $emailIdsOnFile = $this->getEmailIdsOnFile();
     $emailsNotOnFile = array_diff($this->localEmailIdStore, $emailIdsOnFile);
 
@@ -81,27 +92,24 @@ class Main {
 
       foreach($emailsNotOnFile as $emailId) {
         $email = $this->api->getEmail($emailId);
-        if(isset($email)) {
-          $attachments = $this->api->getAttachments($emailId);
-          $email->ATTACHMENTS = $attachments;
-          $email->ATTACHMENTS_RETRIEVED = false;
+        $attachments = $this->api->getAttachments($emailId);
+        $email->ATTACHMENTS = $attachments;
+        $email->ATTACHMENTS_RETRIEVED = false;
 
-          $outputFile = $filepath . '/' . $emailId . '.json';
-          $this->writeToFile($outputFile, $email);
-          Logger::debug('[Main] wrote complete email data object with id ' . $emailId . ' to ' . $outputFile);
-        }
+        $outputFile = $this->emailDirectory . '/' . $emailId . '.json';
+        $this->writeToFile($outputFile, $email);
+        Logger::debug('[Main] wrote complete email data object with id ' . $emailId . ' to ' . $outputFile);
       }
     }
   }
 
   public function getAttachmentFilesFromInsightly() {
-    $emailDirectory = $this->uploadDirectory . '/emails';
     $emailIdsOnFile = $this->getEmailIdsOnFile();
     $emailsWithAttachments = [];
 
-    if( ! empty($emailsOnFile)) {
-      foreach($emailsOnFile as $filename) {
-        $email = json_decode(file_get_contents($emailDirectory . '/' . $filename));
+    if( ! empty($emailIdsOnFile)) {
+      foreach($emailIdsOnFile as $id) {
+        $email = json_decode(file_get_contents($this->emailDirectory . '/' . $id . '.json'));
         if($email->ATTACHMENTS_RETRIEVED == false && ! empty($email->ATTACHMENTS)) {
           $emailsWithAttachments[] = $email;
         }
@@ -109,18 +117,15 @@ class Main {
     }
 
     if( ! empty($emailsWithAttachments)) {
-      $attachmentDirectory = $this->uploadDirectory . '/attachments/';
-
       foreach($emailsWithAttachments as $email) {
         $emailId = $email->EMAIL_ID;
 
         foreach($email->ATTACHMENTS as $attachment) {
-          $filepath = $attachmentDirectory . $emailId . '/' . $attachment->FILE_NAME;
-          $this->makeRecursiveDirectory(dirname($filepath));
+          $filepath = $this->attachmentDirectory . '/' . $emailId . '/' . $attachment->FILE_NAME;
           $this->api->getAttachment($attachment->FILE_ID, $filepath);
         }
 
-        $outputFile - $emailDirectory . '/' . $emailId . '.json';
+        $outputFile = $this->emailDirectory . '/' . $emailId . '.json';
         $email->ATTACHMENTS_RETRIEVED = true;
         $this->writeToFile($outputFile, $email);
         Logger::debug('[Main] ATTACHMENTS_RETRIEVED set to True and wrote to ' . $outputFile);
