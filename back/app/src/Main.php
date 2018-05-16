@@ -136,6 +136,31 @@ class Main {
     }
   }
 
+  /**
+   * getIncompleteEmails
+   */
+  public function getIncompleteEmails() {
+    $emailIdsOnFile = $this->getEmailIdsOnFile();
+    $incompleteEmails = [];
+
+    if( ! empty($emailIdsOnFile)) {
+      foreach($emailIdsOnFile as $id) {
+        $email = json_decode(file_get_contents($this->emailDirectory . '/' . $id . '.json'), true);
+        if( ! array_key_exists('EMAIL_FROM', $email)) {
+          $incompleteEmails[] = $email;
+        }
+      }
+    }
+
+    if(empty($incompleteEmails)) {
+      Logger::debug('[Main] No problem emails were found. Should have all the information we could retrieve on disk');
+    }
+
+    $outputFile = $this->uploadDirectory . '/incompleteEmails.json';
+    $this->writeToFile($outputFile, $incompleteEmails);
+    Logger::debug('[Main] wrote ' . count($incompleteEmails) . ' incomplete emails to ' . $outputFile);
+  }
+
   private function getEmailsWithUnretrievedAttachments(): array {
     $emailIdsOnFile = $this->getEmailIdsOnFile();
     $emailsWithUnretrievedAttachments = [];
