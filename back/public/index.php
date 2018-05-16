@@ -12,6 +12,7 @@ try {
   $main->getRemainingEmailIdsFromInsightly();
   $main->getIndividualEmailsFromInsightly();
   $main->getAttachmentFilesFromInsightly();
+  $main->getIncompleteEmails();
 }
 catch (\Exception $e) {
   echo $e->getMessage();
