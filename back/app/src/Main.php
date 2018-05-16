@@ -90,19 +90,22 @@ class Main {
     $emailIdsOnFile = $this->getEmailIdsOnFile();
     $emailsNotOnFile = array_diff($this->localEmailIdStore, $emailIdsOnFile);
 
-    if( ! empty($emailsNotOnFile)) {
-      Logger::debug('[Main] retrieving ' . count($emailsNotOnFile) . ' emails that are not saved to disk');
+    if(empty($emailsNotOnFile)) {
+      Logger::debug('[Main] all individual emails are already saved to disk. Skipping getIndividualEmailsFromInsightly');
+      return;
+    }
 
-      foreach($emailsNotOnFile as $emailId) {
-        $email = $this->api->getEmail($emailId);
-        $attachments = $this->api->getAttachments($emailId);
-        $email->ATTACHMENTS = $attachments;
-        $email->ATTACHMENTS_RETRIEVED = false;
+    Logger::debug('[Main] retrieving ' . count($emailsNotOnFile) . ' emails that are not saved to disk');
 
-        $outputFile = $this->emailDirectory . '/' . $emailId . '.json';
-        $this->writeToFile($outputFile, $email);
-        Logger::debug('[Main] wrote complete email data object with id ' . $emailId . ' to ' . $outputFile);
-      }
+    foreach($emailsNotOnFile as $emailId) {
+      $email = $this->api->getEmail($emailId);
+      $attachments = $this->api->getAttachments($emailId);
+      $email->ATTACHMENTS = $attachments;
+      $email->ATTACHMENTS_RETRIEVED = false;
+
+      $outputFile = $this->emailDirectory . '/' . $emailId . '.json';
+      $this->writeToFile($outputFile, $email);
+      Logger::debug('[Main] wrote complete email data object with id ' . $emailId . ' to ' . $outputFile);
     }
   }
 
